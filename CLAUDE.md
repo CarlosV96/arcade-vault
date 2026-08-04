@@ -32,6 +32,9 @@ There is no test runner, no test script, and no test files anywhere in the repo,
   currently overrides the Geist fonts `layout.tsx` loads via `next/font/google`. Harmless
   boilerplate leftover — both fonts get replaced during the port described below anyway.
 
+## Styles 
+Usa siempre /frontend-design para diseñar la interfaz de usuario.
+
 ## Current state vs. target
 
 **`app/` is unmodified `create-next-app` output** — one route (`/`), zero `"use client"`,
