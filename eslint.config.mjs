@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone UMD/Babel prototype, not real source — not meant to pass lint.
+    "references/**",
   ]),
 ]);
 
