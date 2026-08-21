@@ -1,5 +1,5 @@
 import { Library } from "@/components/Library";
 
-export default function Home() {
+export default function BibliotecaPage() {
   return <Library />;
 }
