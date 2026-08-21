@@ -105,18 +105,18 @@ Convenciones:
 
 ## Acceptance criteria
 
-- [ ] `npm run build` completa sin errores.
-- [ ] `npm run lint` completa sin errores.
-- [ ] `/` muestra el hero, buscador, chips de categoría y grid de 8 juegos; filtrar por categoría y buscar por texto actualiza el grid mostrado.
-- [ ] Clic en una tarjeta de juego navega a `/juegos/[id]` y muestra título, descripción larga, stats (partidas, mejor global, dificultad) y un leaderboard de 10 filas.
-- [ ] Desde `/juegos/[id]`, "JUGAR AHORA" navega a `/juegos/[id]/jugar` mostrando el HUD (puntaje 0, vidas 3, nivel 1) y la pantalla CRT.
-- [ ] En `/juegos/[id]/jugar`, pulsar PAUSA muestra el overlay "EN PAUSA"; pulsar FIN abre el modal de fin de partida.
-- [ ] Guardar una puntuación en el modal de fin de partida escribe una entrada en `localStorage["av_scores"]` y muestra el aviso "PUNTUACIÓN GUARDADA".
-- [ ] `/auth` permite iniciar sesión o jugar como invitado sin validación de campos, y redirige a `/` tras el envío.
-- [ ] Tras iniciar sesión, el `Nav` muestra el nombre de usuario (máx. 10 caracteres, mayúsculas) en vez del botón "Iniciar Sesión", y esto persiste tras recargar la página.
-- [ ] `/salon` muestra podio (top 3), tabla con 12 filas del juego seleccionado en las pestañas, y una fila adicional "TU MEJOR MARCA" cuando hay sesión iniciada.
-- [ ] Las fuentes Press Start 2P, Courier Prime y JetBrains Mono se cargan vía `next/font/google` (no vía `<link>` de Google Fonts).
-- [ ] El fondo (`.av-bg`, `.av-noise`) se ve detrás del contenido en las 5 pantallas, nunca oculto detrás del contenido principal.
+- [X] `npm run build` completa sin errores.
+- [X] `npm run lint` completa sin errores.
+- [X] `/` muestra el hero, buscador, chips de categoría y grid de 8 juegos; filtrar por categoría y buscar por texto actualiza el grid mostrado.
+- [X] Clic en una tarjeta de juego navega a `/juegos/[id]` y muestra título, descripción larga, stats (partidas, mejor global, dificultad) y un leaderboard de 10 filas.
+- [x] Desde `/juegos/[id]`, "JUGAR AHORA" navega a `/juegos/[id]/jugar` mostrando el HUD (puntaje 0, vidas 3, nivel 1) y la pantalla CRT.
+- [X] En `/juegos/[id]/jugar`, pulsar PAUSA muestra el overlay "EN PAUSA"; pulsar FIN abre el modal de fin de partida.
+- [X] Guardar una puntuación en el modal de fin de partida escribe una entrada en `localStorage["av_scores"]` y muestra el aviso "PUNTUACIÓN GUARDADA".
+- [X] `/auth` permite iniciar sesión o jugar como invitado sin validación de campos, y redirige a `/` tras el envío.
+- [X] Tras iniciar sesión, el `Nav` muestra el nombre de usuario (máx. 10 caracteres, mayúsculas) en vez del botón "Iniciar Sesión", y esto persiste tras recargar la página.
+- [X] `/salon` muestra podio (top 3), tabla con 12 filas del juego seleccionado en las pestañas, y una fila adicional "TU MEJOR MARCA" cuando hay sesión iniciada.
+- [X] Las fuentes Press Start 2P, Courier Prime y JetBrains Mono se cargan vía `next/font/google` (no vía `<link>` de Google Fonts).
+- [X] El fondo (`.av-bg`, `.av-noise`) se ve detrás del contenido en las 5 pantallas, nunca oculto detrás del contenido principal.
 
 ## Decisions
 
