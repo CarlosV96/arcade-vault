@@ -1,5 +1,5 @@
-import { Library } from "@/components/Library";
+import { Home } from "@/components/Home";
 
-export default function Home() {
-  return <Library />;
+export default function HomePage() {
+  return <Home />;
 }

@@ -46,7 +46,7 @@ export function GameDetail({ game }: { game: Game }) {
             <button className="btn xl pulse" onClick={() => router.push(`/juegos/${game.id}/jugar`)}>
               ▶ JUGAR AHORA
             </button>
-            <Link href="/" className="btn ghost lg">
+            <Link href="/biblioteca" className="btn ghost lg">
               VOLVER AL VAULT
             </Link>
           </div>
