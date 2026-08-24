@@ -3,7 +3,7 @@
 > **Status:** Aprobado
 > **Depends on:** SPEC 02
 > **Date:** 2026-08-21
-> **Objective:** Conectar el formulario de contacto de `About` a un envío real de correo electrónico vía Resend, dirigido a carlos.valencia@vibeconsulting.com.co, reemplazando la simulación puramente visual de SPEC 02.
+> **Objective:** Conectar el formulario de contacto de `About` a un envío real de correo electrónico vía Resend, dirigido a anvaloso1@gmail.com, reemplazando la simulación puramente visual de SPEC 02.
 
 ## Why this spec exists
 
@@ -13,7 +13,7 @@ SPEC 02 dejó explícitamente fuera de alcance el "Envío real del formulario de
 
 **In:**
 
-- Ruta API `app/api/contact/route.ts` (Route Handler `POST`) que recibe `{ name, email, message }`, valida en servidor (campos no vacíos, `email` con formato válido), y usa el SDK `resend` (ya en `package.json`, pendiente de commit) para enviar un correo a `carlos.valencia@vibeconsulting.com.co` con `reply_to` = correo del formulario.
+- Ruta API `app/api/contact/route.ts` (Route Handler `POST`) que recibe `{ name, email, message }`, valida en servidor (campos no vacíos, `email` con formato válido), y usa el SDK `resend` (ya en `package.json`, pendiente de commit) para enviar un correo a `anvaloso1@gmail.com` con `reply_to` = correo del formulario.
 - `components/About.tsx`: el `onSubmit` del formulario de contacto pasa de la simulación visual pura a un `fetch("/api/contact", ...)` real. Se agrega:
   - Validación de formato de correo (regex simple) además de la validación de "no vacío" ya existente — ambas siguen disparando el `shake` actual sin llamar a la API.
   - Estado de carga: mientras se espera la respuesta, el botón "ENVIAR MENSAJE" se deshabilita y muestra "ENVIANDO…".
@@ -53,8 +53,8 @@ type SendState = "idle" | "sending" | "sent" | "error";
 ## Implementation plan
 
 1. Agregar `RESEND_API_KEY` a `.env.local` (paso manual del usuario, no versionado — cubierto por `.env*` en `.gitignore`). Prueba manual: `npm run dev` arranca y el Route Handler del paso 2 puede leer `process.env.RESEND_API_KEY`.
-2. Crear `app/api/contact/route.ts`: Route Handler `POST` que valida `name`/`email`/`message` no vacíos y `email` con formato válido en servidor, y en caso de éxito llama a `new Resend(process.env.RESEND_API_KEY).emails.send(...)` con `from: "onboarding@resend.dev"`, `to: "carlos.valencia@vibeconsulting.com.co"`, `reply_to: email`, un asunto que incluya el nombre del remitente, y el cuerpo con nombre/correo/mensaje. Devuelve `200 { ok: true }` en éxito, `400` si la validación de servidor falla, `500` si Resend falla o lanza excepción. Prueba manual: con un cliente HTTP (ej. `curl`) contra `http://localhost:3000/api/contact` con un body válido, llega un correo real a carlos.valencia@vibeconsulting.com.co.
-3. Actualizar `components/About.tsx`: agregar validación de formato de correo antes de enviar, cambiar `onSubmit` para hacer `fetch("/api/contact", { method: "POST", body: JSON.stringify(form) })`, agregar el estado `SendState` (`idle` → `sending` → `sent` | `error`), deshabilitar el botón y mostrar "ENVIANDO…" durante `sending`, mostrar la transcripción de éxito solo cuando el `fetch` resuelve OK, y una línea de error (con opción de reintentar sin perder lo escrito) cuando falla. Prueba manual: enviar el formulario vacío sigue haciendo shake sin llamar a la API; un correo mal formado (ej. `"abc"`) también hace shake sin llamar a la API; con datos válidos el botón muestra "ENVIANDO…", luego la transcripción de éxito, y el correo llega realmente a carlos.valencia@vibeconsulting.com.co con el asunto/cuerpo esperados, y "Responder" en el cliente de correo apunta al correo escrito en el formulario.
+2. Crear `app/api/contact/route.ts`: Route Handler `POST` que valida `name`/`email`/`message` no vacíos y `email` con formato válido en servidor, y en caso de éxito llama a `new Resend(process.env.RESEND_API_KEY).emails.send(...)` con `from: "onboarding@resend.dev"`, `to: "anvaloso1@gmail.com"`, `reply_to: email`, un asunto que incluya el nombre del remitente, y el cuerpo con nombre/correo/mensaje. Devuelve `200 { ok: true }` en éxito, `400` si la validación de servidor falla, `500` si Resend falla o lanza excepción. Prueba manual: con un cliente HTTP (ej. `curl`) contra `http://localhost:3000/api/contact` con un body válido, llega un correo real a anvaloso1@gmail.com.
+3. Actualizar `components/About.tsx`: agregar validación de formato de correo antes de enviar, cambiar `onSubmit` para hacer `fetch("/api/contact", { method: "POST", body: JSON.stringify(form) })`, agregar el estado `SendState` (`idle` → `sending` → `sent` | `error`), deshabilitar el botón y mostrar "ENVIANDO…" durante `sending`, mostrar la transcripción de éxito solo cuando el `fetch` resuelve OK, y una línea de error (con opción de reintentar sin perder lo escrito) cuando falla. Prueba manual: enviar el formulario vacío sigue haciendo shake sin llamar a la API; un correo mal formado (ej. `"abc"`) también hace shake sin llamar a la API; con datos válidos el botón muestra "ENVIANDO…", luego la transcripción de éxito, y el correo llega realmente a anvaloso1@gmail.com con el asunto/cuerpo esperados, y "Responder" en el cliente de correo apunta al correo escrito en el formulario.
 4. Forzar un error (ej. una `RESEND_API_KEY` inválida temporalmente, o desconectar la red) y confirmar que se muestra el estado de error sin perder los datos escritos, y que se puede reintentar tras restaurar la key. Revertir la key al valor real al terminar la prueba.
 5. Commitear el cambio pendiente en `package.json`/`package-lock.json` (dependencia `resend`) junto con el resto del código de este spec.
 6. Pulido final: `npm run lint` y `npm run build` sin errores.
@@ -66,7 +66,7 @@ type SendState = "idle" | "sending" | "sent" | "error";
 - [ ] Enviar el formulario de `/about` vacío hace shake y no llama a `/api/contact`.
 - [ ] Enviar el formulario con un correo de formato inválido hace shake y no llama a `/api/contact`.
 - [ ] Enviar el formulario con datos válidos deshabilita el botón y muestra "ENVIANDO…" mientras se espera la respuesta.
-- [ ] Un envío válido resulta en un correo real recibido en carlos.valencia@vibeconsulting.com.co, con `reply-to` igual al correo escrito en el formulario.
+- [ ] Un envío válido resulta en un correo real recibido en anvaloso1@gmail.com, con `reply-to` igual al correo escrito en el formulario.
 - [ ] Tras un envío válido exitoso se muestra la transcripción `terminal-success` con el nombre en mayúsculas, igual que en SPEC 02.
 - [ ] Si el envío falla (ej. Resend responde error), se muestra un estado de error en la UI sin perder los datos del formulario, permitiendo reintentar.
 - [ ] `RESEND_API_KEY` no queda hardcodeada en ningún archivo versionado — se lee de `process.env` únicamente dentro del Route Handler.
