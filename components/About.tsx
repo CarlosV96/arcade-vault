@@ -55,21 +55,42 @@ interface ContactForm {
 
 const EMPTY_FORM: ContactForm = { name: "", email: "", msg: "" };
 
+type SendState = "idle" | "sending" | "sent" | "error";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function About() {
   useReveal();
 
   const [form, setForm] = useState<ContactForm>(EMPTY_FORM);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sendState, setSendState] = useState<SendState>("idle");
+  const [sentName, setSentName] = useState("");
   const [shake, setShake] = useState(false);
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.msg.trim()) {
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const msg = form.msg.trim();
+    if (!name || !email || !msg || !EMAIL_RE.test(email)) {
       setShake(true);
       setTimeout(() => setShake(false), 400);
       return;
     }
-    setSent(form.name.trim());
+
+    setSendState("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message: msg }),
+      });
+      if (!res.ok) throw new Error("send_failed");
+      setSentName(name);
+      setSendState("sent");
+    } catch {
+      setSendState("error");
+    }
   };
 
   return (
@@ -121,7 +142,7 @@ export function About() {
           </div>
 
           <form className={"contact-form" + (shake ? " shake" : "")} onSubmit={onSubmit}>
-            {!sent ? (
+            {sendState === "idle" || sendState === "sending" ? (
               <>
                 <div className="field">
                   <label>NOMBRE</label>
@@ -135,8 +156,25 @@ export function About() {
                   <label>MENSAJE</label>
                   <textarea rows={5} value={form.msg} onChange={(e) => setForm({ ...form, msg: e.target.value })} placeholder="Cuéntanos qué tienes en mente…"></textarea>
                 </div>
-                <button className="btn xl press" type="submit" style={{ width: "100%" }}>▶  ENVIAR MENSAJE</button>
+                <button className="btn xl press" type="submit" disabled={sendState === "sending"} style={{ width: "100%" }}>
+                  {sendState === "sending" ? "ENVIANDO…" : "▶  ENVIAR MENSAJE"}
+                </button>
               </>
+            ) : sendState === "error" ? (
+              <div className="terminal-success is-error">
+                <div className="term-bar">
+                  <span className="dot r"></span><span className="dot y"></span><span className="dot g"></span>
+                  <span className="term-title">VAULT-OS // TERMINAL</span>
+                </div>
+                <div className="term-body">
+                  <div className="line"><span className="prompt">vault@arcade:~$</span> ./send_message --to=team</div>
+                  <div className="line dim">[OK] Conectando con servidor…</div>
+                  <div className="line error">[ERROR] NO SE PUDO ENVIAR EL MENSAJE. INTÉNTALO DE NUEVO.<span className="caret">_</span></div>
+                  <div style={{ marginTop: 18 }}>
+                    <button className="btn ghost" type="button" onClick={() => setSendState("idle")}>REINTENTAR</button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="terminal-success">
                 <div className="term-bar">
@@ -148,9 +186,9 @@ export function About() {
                   <div className="line dim">[OK] Conectando con servidor…</div>
                   <div className="line dim">[OK] Validando contenido…</div>
                   <div className="line dim">[OK] Transmitiendo paquete…</div>
-                  <div className="line success">&gt; MENSAJE RECIBIDO. TE RESPONDEREMOS PRONTO. GRACIAS, {sent.toUpperCase()}.<span className="caret">_</span></div>
+                  <div className="line success">&gt; MENSAJE RECIBIDO. TE RESPONDEREMOS PRONTO. GRACIAS, {sentName.toUpperCase()}.<span className="caret">_</span></div>
                   <div style={{ marginTop: 18 }}>
-                    <button className="btn ghost" type="button" onClick={() => { setSent(null); setForm(EMPTY_FORM); }}>ENVIAR OTRO MENSAJE</button>
+                    <button className="btn ghost" type="button" onClick={() => { setSendState("idle"); setSentName(""); setForm(EMPTY_FORM); }}>ENVIAR OTRO MENSAJE</button>
                   </div>
                 </div>
               </div>

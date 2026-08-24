@@ -1,6 +1,6 @@
 # SPEC 02 — Home (landing) y Acerca de
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-21
 > **Objective:** Portar las pantallas Home (landing) y Acerca de del prototipo `references/templates/home-about/` a `/` y `/about`, mover la Biblioteca a `/biblioteca` y actualizar el `Nav` y los enlaces "volver" existentes en consecuencia.
