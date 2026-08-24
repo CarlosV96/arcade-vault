@@ -1,6 +1,6 @@
 # SPEC 03 — Envío real de contacto vía Resend
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 02
 > **Date:** 2026-08-21
 > **Objective:** Conectar el formulario de contacto de `About` a un envío real de correo electrónico vía Resend, dirigido a anvaloso1@gmail.com, reemplazando la simulación puramente visual de SPEC 02.
