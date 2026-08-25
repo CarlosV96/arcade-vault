@@ -14,7 +14,7 @@ El proyecto ya tiene un servidor MCP de Supabase conectado (`.mcp.json`) y una v
 **In:**
 
 - Dependencias `@supabase/ssr` y `@supabase/supabase-js` agregadas a `package.json`/`package-lock.json`.
-- `.env.template`: se agregan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, ya completadas con los valores reales del proyecto conectado (`https://gxefrfheaoijzllcpmek.supabase.co` y la publishable key `sb_publishable_...`) — son valores públicos por diseño (terminan en el bundle del navegador), a diferencia de `RESEND_API_KEY` que sí es secreta.
+- `.env.template`: se agregan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` como placeholders vacíos, igual que el resto de variables del archivo (`RESEND_API_KEY`, `SUPABASE_DB_PASSWORD`). `.env.local` (no versionado) sí lleva los valores reales del proyecto conectado (`https://gxefrfheaoijzllcpmek.supabase.co` y la publishable key `sb_publishable_...`).
 - `lib/supabase/client.ts`: `createClient()` que instancia un cliente de navegador (`createBrowserClient` de `@supabase/ssr`), para usar desde Client Components.
 - `lib/supabase/server.ts`: `createClient()` async que instancia un cliente de servidor (`createServerClient` de `@supabase/ssr`, leyendo/escribiendo cookies vía `next/headers`), para usar desde Server Components y Route Handlers.
 - `app/api/supabase-health/route.ts`: Route Handler `GET` que usa el cliente de servidor para confirmar que la conexión al proyecto Supabase funciona de verdad, sin depender de ninguna tabla real (ver Data model).
@@ -44,10 +44,10 @@ Este spec no introduce tablas ni datos persistentes. Único elemento nuevo, el c
 ## Implementation plan
 
 1. Instalar dependencias: `npm install @supabase/ssr @supabase/supabase-js`. Prueba manual: `package.json` y `package-lock.json` quedan actualizados; `npm run build` sigue sin errores.
-2. Completar `.env.template` con `NEXT_PUBLIC_SUPABASE_URL=https://gxefrfheaoijzllcpmek.supabase.co` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`, y copiar esas dos líneas a `.env.local` (no versionado, cubierto por `.gitignore`). Prueba manual: `npm run dev` arranca y `process.env.NEXT_PUBLIC_SUPABASE_URL` está disponible en el navegador.
+2. Agregar `NEXT_PUBLIC_SUPABASE_URL=` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=` vacías a `.env.template`, y completar esas dos variables con los valores reales en `.env.local` (no versionado, cubierto por `.gitignore`). Prueba manual: `npm run dev` arranca y `process.env.NEXT_PUBLIC_SUPABASE_URL` está disponible en el navegador.
 3. Crear `lib/supabase/client.ts` con `createClient()` (`createBrowserClient` de `@supabase/ssr`). Prueba manual: el archivo compila sin errores de tipos.
 4. Crear `lib/supabase/server.ts` con `createClient()` async (`createServerClient` de `@supabase/ssr`, cookies de `next/headers`). Prueba manual: `npm run build` compila sin errores de tipos.
-5. Crear `app/api/supabase-health/route.ts` (`GET`): usa el cliente de servidor para consultar una tabla inexistente (ej. `select("id").from("_health_check").limit(1)`) y devuelve `{ ok: true }` si el error recibido es "la relación no existe" (prueba que la conexión llegó hasta Postgres), o `{ ok: false, error }` en cualquier otro caso (URL/clave inválida, sin red, etc.). Prueba manual: con `npm run dev` corriendo, `GET http://localhost:3000/api/supabase-health` devuelve `{ ok: true }`.
+5. Crear `app/api/supabase-health/route.ts` (`GET`): usa el cliente de servidor para consultar una tabla inexistente (ej. `select("id").from("_health_check").limit(1)`) y devuelve `{ ok: true }` si el error recibido es `PGRST205` (PostgREST no encontró la tabla en su schema cache — prueba que la conexión llegó hasta el proyecto), o `{ ok: false, error }` en cualquier otro caso (URL/clave inválida, sin red, etc.). Prueba manual: con `npm run dev` corriendo, `GET http://localhost:3000/api/supabase-health` devuelve `{ ok: true }`.
 6. Pulido final: `npm run lint` y `npm run build` sin errores.
 
 ## Acceptance criteria
@@ -55,7 +55,7 @@ Este spec no introduce tablas ni datos persistentes. Único elemento nuevo, el c
 - [ ] `npm run build` completa sin errores.
 - [ ] `npm run lint` completa sin errores.
 - [ ] `@supabase/ssr` y `@supabase/supabase-js` aparecen en `package.json` y `package-lock.json`.
-- [ ] `.env.template` contiene `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con los valores reales del proyecto conectado.
+- [ ] `.env.template` contiene `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` como placeholders vacíos, y `.env.local` los tiene completados con los valores reales del proyecto conectado.
 - [ ] `lib/supabase/client.ts` exporta una función que instancia un cliente de Supabase válido para Client Components.
 - [ ] `lib/supabase/server.ts` exporta una función async que instancia un cliente de Supabase válido para Server Components/Route Handlers, usando cookies de `next/headers`.
 - [ ] `GET /api/supabase-health` devuelve `{ ok: true }` cuando el proyecto es accesible con las credenciales de `.env.local`.
@@ -66,7 +66,7 @@ Este spec no introduce tablas ni datos persistentes. Único elemento nuevo, el c
 
 - **Sí:** usar `@supabase/ssr` en vez de solo `@supabase/supabase-js`, aunque este spec no implementa auth todavía. Es el paquete que Next.js App Router necesita para manejar cookies correctamente en cuanto se agregue auth; evita una migración de paquete en un spec futuro.
 - **Sí:** crear el cliente de navegador y el de servidor en el mismo spec, aunque por ahora solo el health-check los usa. Deja la base lista para las features futuras que el usuario ya mencionó (auth, scores, realtime, edge functions).
-- **Sí:** completar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con los valores reales directamente en `.env.template`. Son valores públicos por diseño (se exponen igual en el bundle de cualquier app Supabase), a diferencia de `RESEND_API_KEY` que sí es secreta y se dejó vacía en SPEC 03.
+- **No:** completar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con los valores reales en `.env.template`. Aunque son valores públicos por diseño (se exponen igual en el bundle del navegador), durante la implementación el usuario decidió mantener `.env.template` solo como referencia de las claves esperadas, sin valores reales — igual tratamiento que `RESEND_API_KEY`. Los valores reales quedan únicamente en `.env.local`, no versionado.
 - **Sí:** usar la publishable key moderna (`sb_publishable_...`) en vez de la legacy anon key JWT. Supabase la recomienda para proyectos nuevos por rotación independiente; la legacy sigue disponible si hiciera falta.
 - **Sí:** verificar la conexión consultando una tabla inexistente en vez de crear una tabla real solo para el health-check. Confirma que la URL/clave llegan de verdad hasta Postgres sin violar "no crear tablas todavía".
 - **No:** `middleware.ts` para refrescar sesión. No hay sesión de auth que mantener en este spec; se agrega junto con el spec de autenticación real.
@@ -77,7 +77,7 @@ Este spec no introduce tablas ni datos persistentes. Único elemento nuevo, el c
 
 | Riesgo | Mitigación |
 | --- | --- |
-| Confundir la publishable key con un secreto y evitar versionarla por error, dejando `.env.template` incompleto | Se documenta explícitamente en Decisions que es pública por diseño (va al bundle del navegador); no requiere el mismo tratamiento que `RESEND_API_KEY`. |
+| El código de error usado para detectar "tabla inexistente" (`42P01`, el código crudo de Postgres) no es el que realmente devuelve la API REST de Supabase | PostgREST devuelve su propio código (`PGRST205`, "tabla no encontrada en el schema cache") en vez de `42P01`. Se confirmó contra el proyecto real durante la implementación y se ajustó `app/api/supabase-health/route.ts` para verificar `PGRST205`. |
 | Un spec futuro de autenticación necesita el manejo de cookies de `@supabase/ssr` que este spec crea pero no ejercita en un flujo real de usuario | El Route Handler de health-check sí ejercita `lib/supabase/server.ts` end-to-end (incluyendo el manejo de cookies), confirmando que el patrón funciona antes de construir auth encima. |
 
 ## What is **not** in this spec
