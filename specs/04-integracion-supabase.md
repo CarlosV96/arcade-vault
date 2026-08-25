@@ -1,6 +1,6 @@
 # SPEC 04 — Integración base de Supabase con el proyecto Next.js
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-25
 > **Objective:** Conectar el proyecto Next.js a la instancia de Supabase ya vinculada vía MCP (`project_ref gxefrfheaoijzllcpmek`), instalando el SDK oficial y creando los clientes de navegador y de servidor con `@supabase/ssr`, sin crear tablas ni implementar autenticación todavía.
