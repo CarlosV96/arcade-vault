@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/session";
-import { saveScore } from "@/lib/scores";
+import { saveScore, saveRealScore } from "@/lib/scores";
 import type { Game } from "@/lib/data";
 import { REAL_GAMES } from "@/components/games/registry";
 import type { RealGameHandle, RealGameProps } from "@/lib/games/types";
@@ -23,6 +23,8 @@ export function GamePlayer({ game }: { game: Game }) {
   const [over, setOver] = useState(false);
   const [name, setName] = useState(user ? user.name : "INVITADO");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [restartKey, setRestartKey] = useState(0);
   const [realScore, setRealScore] = useState(0);
   const [realLives, setRealLives] = useState(3);
@@ -43,6 +45,8 @@ export function GamePlayer({ game }: { game: Game }) {
     setPaused(false);
     setOver(false);
     setSaved(false);
+    setSaveError(null);
+    setSaving(false);
     setRealScore(0);
     setRealLives(3);
     setRealLevel(1);
@@ -146,13 +150,35 @@ export function GamePlayer({ game }: { game: Game }) {
                 />
                 <button
                   className="btn yellow"
-                  onClick={() => {
-                    saveScore({ game: game.id, score: displayScore, name });
-                    setSaved(true);
+                  disabled={saving}
+                  onClick={async () => {
+                    if (RealGame) {
+                      setSaving(true);
+                      setSaveError(null);
+                      try {
+                        await saveRealScore({ game: game.id, score: displayScore, name });
+                        setSaved(true);
+                      } catch {
+                        setSaveError("NO SE PUDO GUARDAR LA PUNTUACIÓN");
+                      } finally {
+                        setSaving(false);
+                      }
+                    } else {
+                      saveScore({ game: game.id, score: displayScore, name });
+                      setSaved(true);
+                    }
                   }}
                 >
-                  GUARDAR PUNTUACIÓN
+                  {saving ? "GUARDANDO…" : "GUARDAR PUNTUACIÓN"}
                 </button>
+                {saveError && (
+                  <div
+                    className="toast-saved"
+                    style={{ color: "var(--magenta)", textShadow: "0 0 8px var(--magenta)", borderRightColor: "var(--magenta)" }}
+                  >
+                    ▸ {saveError}_
+                  </div>
+                )}
               </div>
             ) : (
               <div className="toast-saved">▸ PUNTUACIÓN GUARDADA_</div>
