@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/session";
 import { saveScore } from "@/lib/scores";
 import type { Game } from "@/lib/data";
+import { REAL_GAMES } from "@/components/games/registry";
+import type { RealGameHandle, RealGameProps } from "@/lib/games/types";
 
 const SCORE = 0;
 const LIVES = 3;
@@ -12,16 +15,38 @@ const LEVEL = 1;
 
 export function GamePlayer({ game }: { game: Game }) {
   const { user } = useSession();
+  const RealGame = REAL_GAMES[game.id] as
+    | ForwardRefExoticComponent<RealGameProps & RefAttributes<RealGameHandle>>
+    | undefined;
+  const gameRef = useRef<RealGameHandle>(null);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState(user ? user.name : "INVITADO");
   const [saved, setSaved] = useState(false);
+  const [restartKey, setRestartKey] = useState(0);
+  const [realScore, setRealScore] = useState(0);
+  const [realLives, setRealLives] = useState(3);
+  const [realLevel, setRealLevel] = useState(1);
 
-  const endGame = () => setOver(true);
+  const displayScore = RealGame ? realScore : SCORE;
+  const displayLives = RealGame ? realLives : LIVES;
+  const displayLevel = RealGame ? realLevel : LEVEL;
+
+  const endGame = () => {
+    if (RealGame) {
+      gameRef.current?.end();
+    } else {
+      setOver(true);
+    }
+  };
   const restart = () => {
     setPaused(false);
     setOver(false);
     setSaved(false);
+    setRealScore(0);
+    setRealLives(3);
+    setRealLevel(1);
+    setRestartKey((k) => k + 1);
   };
 
   return (
@@ -36,15 +61,15 @@ export function GamePlayer({ game }: { game: Game }) {
           </div>
           <div className="hud-stat">
             <div className="l">Puntuación</div>
-            <div className="v">{SCORE.toLocaleString("es-ES")}</div>
+            <div className="v">{displayScore.toLocaleString("es-ES")}</div>
           </div>
           <div className="hud-stat lives">
             <div className="l">Vidas</div>
-            <div className="v">{"♥ ".repeat(LIVES).trim() || "—"}</div>
+            <div className="v">{"♥ ".repeat(displayLives).trim() || "—"}</div>
           </div>
           <div className="hud-stat level">
             <div className="l">Nivel</div>
-            <div className="v">{String(LEVEL).padStart(2, "0")}</div>
+            <div className="v">{String(displayLevel).padStart(2, "0")}</div>
           </div>
         </div>
         <div className="hud-actions">
@@ -62,13 +87,28 @@ export function GamePlayer({ game }: { game: Game }) {
 
       <div className="crt">
         <div className="crt-screen">
-          <div className="game-arena">
-            <div className="grid-floor" />
-            <div className="enemy e1" />
-            <div className="enemy e2" />
-            <div className="enemy e3" />
-            <div className="player-ship" />
-          </div>
+          {RealGame ? (
+            <RealGame
+              key={restartKey}
+              ref={gameRef}
+              paused={paused}
+              onScoreChange={setRealScore}
+              onLivesChange={setRealLives}
+              onLevelChange={setRealLevel}
+              onGameOver={(finalScore) => {
+                setRealScore(finalScore);
+                setOver(true);
+              }}
+            />
+          ) : (
+            <div className="game-arena">
+              <div className="grid-floor" />
+              <div className="enemy e1" />
+              <div className="enemy e2" />
+              <div className="enemy e3" />
+              <div className="player-ship" />
+            </div>
+          )}
           {paused && (
             <div className="crt-content" style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}>
               <div>
@@ -96,7 +136,7 @@ export function GamePlayer({ game }: { game: Game }) {
           <div className="modal">
             <h2>FIN DEL JUEGO</h2>
             <div className="final-label">PUNTUACIÓN FINAL</div>
-            <div className="final">{SCORE.toLocaleString("es-ES")}</div>
+            <div className="final">{displayScore.toLocaleString("es-ES")}</div>
             {!saved ? (
               <div className="input-row">
                 <input
@@ -107,7 +147,7 @@ export function GamePlayer({ game }: { game: Game }) {
                 <button
                   className="btn yellow"
                   onClick={() => {
-                    saveScore({ game: game.id, score: SCORE, name });
+                    saveScore({ game: game.id, score: displayScore, name });
                     setSaved(true);
                   }}
                 >
