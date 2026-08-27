@@ -80,6 +80,17 @@ export const GAMES: Game[] = [
     plays: "15.6K",
   },
   {
+    id: "asteroides",
+    title: "ASTEROIDES",
+    short: "Sobrevive en un campo toroidal repleto de rocas que se fragmentan.",
+    long: "Pilota una nave triangular a través de un campo de asteroides sin bordes: sal por un lado de la pantalla y reaparece por el otro. Dispara para fragmentar rocas en trozos más pequeños, recoge el power-up de disparo triple y aprovecha tu invencibilidad temporal tras cada respawn. Tienes 3 vidas — hazlas contar.",
+    cat: "SHOOTER",
+    cover: "cover-asteroides",
+    color: "yellow",
+    best: 38700,
+    plays: "9.7K",
+  },
+  {
     id: "ranaria",
     title: "RANARIA",
     short: "Cruza la autopista de pixeles.",
