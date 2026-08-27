@@ -2,9 +2,17 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATS, GAMES, type Game } from "@/lib/data";
+import { CATS, type Game } from "@/lib/data";
 
-function GameCard({ game, onSelect }: { game: Game; onSelect: (game: Game) => void }) {
+function GameCard({
+  game,
+  bestScore,
+  onSelect,
+}: {
+  game: Game;
+  bestScore: number | undefined;
+  onSelect: (game: Game) => void;
+}) {
   const tiltRef = useRef<HTMLDivElement>(null);
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -40,7 +48,7 @@ function GameCard({ game, onSelect }: { game: Game; onSelect: (game: Game) => vo
         <div className="row">
           <div className="score-badge">
             <span>MEJOR PUNTUACIÓN</span>
-            <b>{game.best.toLocaleString("es-ES")}</b>
+            <b>{bestScore !== undefined ? bestScore.toLocaleString("es-ES") : "—"}</b>
           </div>
           <button
             className={"btn " + (game.color === "magenta" ? "magenta" : game.color === "yellow" ? "yellow" : "")}
@@ -57,16 +65,22 @@ function GameCard({ game, onSelect }: { game: Game; onSelect: (game: Game) => vo
   );
 }
 
-export function Library() {
+export function Library({
+  games,
+  bestScores,
+}: {
+  games: Game[];
+  bestScores: Record<string, number>;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<(typeof CATS)[number]>("TODOS");
 
   const filtered = useMemo(() => {
-    return GAMES.filter(
+    return games.filter(
       (g) => (cat === "TODOS" || g.cat === cat) && g.title.toLowerCase().includes(q.toLowerCase())
     );
-  }, [q, cat]);
+  }, [games, q, cat]);
 
   const goToGame = (game: Game) => router.push(`/juegos/${game.id}`);
 
@@ -95,7 +109,7 @@ export function Library() {
 
       <div className="av-grid">
         {filtered.map((g) => (
-          <GameCard key={g.id} game={g} onSelect={goToGame} />
+          <GameCard key={g.id} game={g} bestScore={bestScores[g.id]} onSelect={goToGame} />
         ))}
         {filtered.length === 0 && (
           <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 80, color: "var(--ink-faint)" }}>

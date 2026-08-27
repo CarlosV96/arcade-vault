@@ -1,6 +1,6 @@
 # SPEC 05 — Juego real de Asteroides integrado en el reproductor
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-27
 > **Objective:** Portar el juego de Asteroids ya construido en `references/started-games/02-asteroids/game.js` (canvas HTML5, sin dependencias) a un motor TypeScript reutilizable y conectarlo a una nueva entrada del catálogo (`asteroides`) para que `GamePlayer` lo muestre como el primer juego realmente jugable, dejando el resto de juegos con su simulación decorativa actual.

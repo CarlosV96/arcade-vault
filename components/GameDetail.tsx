@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { seededScores, type Game } from "@/lib/data";
+import { type Game } from "@/lib/data";
+import { type ScoreRow } from "@/lib/games-data";
 
-export function GameDetail({ game }: { game: Game }) {
+export function GameDetail({ game, scores }: { game: Game; scores: ScoreRow[] }) {
   const router = useRouter();
-  const scores = useMemo(() => seededScores(game.id.length * 17 + 3, 10), [game.id]);
+  const best = scores[0]?.score;
 
   return (
     <div className="av-detail fade-in">
@@ -32,7 +32,7 @@ export function GameDetail({ game }: { game: Game }) {
             <div>
               <div className="l">Mejor global</div>
               <div className="v" style={{ color: "var(--magenta)", textShadow: "0 0 6px rgba(255,0,110,0.5)" }}>
-                {game.best.toLocaleString("es-ES")}
+                {best !== undefined ? best.toLocaleString("es-ES") : "—"}
               </div>
             </div>
             <div>
@@ -56,16 +56,22 @@ export function GameDetail({ game }: { game: Game }) {
       <aside>
         <div className="leaderboard">
           <h3>MEJORES PUNTUACIONES</h3>
-          {scores.map((r, i) => (
-            <div key={r.name} className={"lb-row" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")}>
-              <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
-              <div className="pl">
-                {r.name}
-                <div style={{ fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.1em" }}>{r.date}</div>
-              </div>
-              <div className="sc">{r.score.toLocaleString("es-ES")}</div>
+          {scores.length === 0 ? (
+            <div style={{ padding: "24px 0", textAlign: "center", color: "var(--ink-faint)" }}>
+              AÚN NO HAY PUNTUACIONES
             </div>
-          ))}
+          ) : (
+            scores.map((r, i) => (
+              <div key={r.rank} className={"lb-row" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")}>
+                <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
+                <div className="pl">
+                  {r.name}
+                  <div style={{ fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.1em" }}>{r.date}</div>
+                </div>
+                <div className="sc">{r.score.toLocaleString("es-ES")}</div>
+              </div>
+            ))
+          )}
         </div>
       </aside>
     </div>
