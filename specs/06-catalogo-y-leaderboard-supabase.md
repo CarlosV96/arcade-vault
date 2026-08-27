@@ -25,6 +25,7 @@ SPEC 04 conectó el proyecto a Supabase pero explícitamente dejó fuera cualqui
 - `components/GameDetail.tsx`: el stat "Mejor global" deja de leer `game.best` (mock) y pasa a ser la puntuación más alta real de `scores` para ese juego (`—` si no hay ninguna).
 - `components/Library.tsx`: el badge "MEJOR PUNTUACIÓN" de cada card pasa a ser la puntuación más alta real de ese juego (`—` si no hay ninguna), en vez de `game.best`.
 - `components/GamePlayer.tsx`: al guardar la puntuación, si el juego tiene motor real (`REAL_GAMES[game.id]`) llama a `saveRealScore` (Supabase); si no, sigue llamando a `saveScore` (localStorage) exactamente igual que hoy.
+- `lib/games-data.ts`: `getGames()`/`getGame()` sobrescriben el campo `plays` con el conteo real de filas en `scores` para los juegos en `REAL_GAMES` (hoy `asteroides`), formateado con el mismo estilo compacto que usa el mock (`"1.2K"` a partir de 1000, número entero por debajo). Los 8 juegos decorativos conservan el `plays` migrado tal cual desde `lib/data.ts`, porque no generan filas reales en `scores`. Nueva lista compartida `lib/games/real-game-ids.ts` (`REAL_GAME_IDS`) para que `lib/games-data.ts` (servidor) sepa qué juegos tienen conteo real sin importar `components/games/registry.ts` (que trae componentes de cliente).
 
 **Out of scope (for future specs):**
 
@@ -34,7 +35,7 @@ SPEC 04 conectó el proyecto a Supabase pero explícitamente dejó fuera cualqui
 - Edición/borrado de puntuaciones (moderación) — no hay UI ni política RLS para actualizar/eliminar filas de `scores`.
 - Tiempo real (Supabase Realtime) — los leaderboards se cargan una vez por navegación de página, sin suscripción a cambios en vivo.
 - CRUD de juegos desde la UI — la tabla `games` solo se llena por la migración semilla; no hay pantalla de administración para agregar/editar juegos.
-- Cambiar el campo `plays` ("Partidas") — sigue siendo el mismo valor mock migrado tal cual desde `lib/data.ts`, no se conecta a analítica real.
+- Cambiar el campo `plays` ("Partidas") de los 8 juegos decorativos — siguen mostrando el mismo valor mock migrado tal cual desde `lib/data.ts`, sin conectarse a analítica real (no generan filas en `scores`). Para juegos en `REAL_GAMES` (hoy `asteroides`), `plays` sí refleja el conteo real de `scores` (ver Scope > In).
 - Cambiar el layout/CSS de `Library`, `GameDetail`, `HallOfFame` o `GamePlayer` más allá de lo necesario para reflejar los nuevos estados de datos (vacío, fallback).
 
 ## Data model
@@ -82,8 +83,8 @@ export interface ScoreRow {
   date: string; // DD/MM/YYYY, formateado desde created_at
 }
 
-export async function getGames(): Promise<Game[]>; // fallback: GAMES de lib/data.ts
-export async function getGame(id: string): Promise<Game | undefined>;
+export async function getGames(): Promise<Game[]>; // fallback: GAMES de lib/data.ts; `plays` real para juegos en REAL_GAME_IDS
+export async function getGame(id: string): Promise<Game | undefined>; // idem
 export async function getLeaderboard(gameId: string, limit?: number): Promise<ScoreRow[]>; // fallback: []
 export async function getBestScores(): Promise<Record<string, number>>; // gameId -> mejor score real; fallback: {}
 ```
@@ -93,7 +94,7 @@ export async function getBestScores(): Promise<Record<string, number>>; // gameI
 export async function saveRealScore(entry: { game: string; score: number; name: string }): Promise<void>;
 ```
 
-Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Game.id` hoy (`"asteroides"`, `"bloque-buster"`, …). `ScoreRow.date` se formatea en el servidor a partir de `created_at` con el mismo patrón `DD/MM/YYYY` que usaba `seededScores`, para no tocar el CSS/markup que ya consume ese formato.
+Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Game.id` hoy (`"asteroides"`, `"bloque-buster"`, …). `ScoreRow.date` se formatea en el servidor a partir de `created_at` con el mismo patrón `DD/MM/YYYY` que usaba `seededScores`, para no tocar el CSS/markup que ya consume ese formato. `plays` refleja el conteo real de filas en `scores` para juegos en `REAL_GAME_IDS` (número entero si < 1000, `"N.NK"` si ≥ 1000, mismo estilo que el mock); para el resto de juegos se mantiene el valor `plays` migrado de `lib/data.ts` tal cual.
 
 ## Implementation plan
 
@@ -105,6 +106,7 @@ Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Gam
 6. Actualizar `app/salon/page.tsx` para cargar `getGames()` y un leaderboard por juego (`getLeaderboard` para cada uno de los 9), pasando `games`/`leaderboards` a `HallOfFame`; actualizar `HallOfFame` para recibir esas props, generar sus 9 pestañas desde `games`, resolver el podio con relleno "—" cuando hay menos de 3 filas, mostrar el estado vacío para juegos sin puntuaciones, y calcular "TU MEJOR MARCA" buscando `user.name` en las filas reales del juego activo (sin fila si no aparece). Prueba manual: `/salon` muestra 9 pestañas; la de `asteroides` con datos reales, el resto en estado vacío; el podio no rompe con 0/1/2 filas.
 7. Actualizar `app/juegos/[id]/jugar/page.tsx` para usar `getGame(id)` en vez de `GAMES.find`; actualizar `GamePlayer` para llamar a `saveRealScore` cuando `REAL_GAMES[game.id]` existe (mostrando el mismo toast "PUNTUACIÓN GUARDADA" al resolver, o un estado de error simple si falla la inserción) y a `saveScore` (localStorage, sin cambios) en cualquier otro caso. Prueba manual: jugar `asteroides` de punta a punta, guardar la puntuación, y verla aparecer en `/juegos/asteroides` y en la pestaña `ASTEROIDES` de `/salon`; jugar cualquier otro juego y confirmar que su leaderboard sigue vacío después de "guardar".
 8. Pulido final: `npm run lint` y `npm run build` sin errores.
+9. (Ampliación de alcance, pedida explícitamente por el usuario tras jugar `asteroides` y ver "Partidas" con el valor quemado `9.7K`) Crear `lib/games/real-game-ids.ts` con `REAL_GAME_IDS: string[] = ["asteroides"]`, y hacer que `components/games/registry.ts` construya `REAL_GAMES` a partir de esa lista en vez de repetir el string `"asteroides"`. En `lib/games-data.ts`, `getGames()`/`getGame()` cuentan las filas de `scores` por `game_id` para los ids en `REAL_GAME_IDS` y sobrescriben `plays` con ese conteo formateado; el resto de juegos conserva el `plays` migrado sin cambios. Prueba manual: jugar `asteroides`, guardar una puntuación, y ver que "Partidas" sube en `/biblioteca` y en el stat strip de `/juegos/asteroides` tras recargar; los 8 juegos decorativos siguen mostrando su valor mock (`"12.4K"`, etc.) sin cambios; `npm run lint` y `npm run build` siguen sin errores.
 
 ## Acceptance criteria
 
@@ -122,6 +124,7 @@ Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Gam
 - [ ] Guardar una puntuación en cualquiera de los 8 juegos decorativos sigue escribiendo únicamente en `localStorage.av_scores`, sin insertar en la tabla `scores` de Supabase.
 - [ ] Si `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` faltan o Supabase no responde, `/biblioteca`, `/juegos/[id]` y `/salon` siguen renderizando (con los 9 juegos de `GAMES` como fallback y leaderboards vacíos) en vez de un error 500.
 - [ ] `lib/data.ts` ya no exporta `seededScores`, `PLAYERS` ni `ScoreRow`.
+- [ ] "Partidas" en `/biblioteca` (card de `asteroides`) y en el stat strip de `/juegos/asteroides` refleja el conteo real de filas en `scores` para `asteroides`, no el valor mock quemado `"9.7K"`; los 8 juegos decorativos siguen mostrando su `plays` mock sin cambios.
 
 ## Decisions
 
@@ -137,6 +140,7 @@ Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Gam
 - **No:** anti-cheat o validación de puntuaciones. La política de inserción pública permite insertar cualquier score numérico ≥ 0; se documenta como riesgo aceptado (ver Risks), no se mitiga aquí.
 - **No:** Supabase Realtime para los leaderboards. Cada página consulta una vez por navegación; una suscripción en vivo es una ampliación de alcance para un spec futuro si hace falta.
 - **No:** UI de administración para editar/agregar juegos en `games`. La tabla se llena solo por la migración semilla de este spec.
+- **Sí:** para juegos con motor real (`REAL_GAME_IDS`, hoy `asteroides`), `plays` pasa a ser el conteo real de filas en `scores` para ese juego, en vez del valor mock migrado. Decisión explícita del usuario tras jugar `asteroides`, guardar una puntuación real, y notar que "Partidas" seguía mostrando el valor quemado `9.7K`. Los 8 juegos decorativos, al no generar filas reales en `scores`, conservan su `plays` mock — no hay dato real que mostrar para ellos todavía.
 
 ## Risks
 
@@ -154,6 +158,6 @@ Convenciones: `games.id`/`scores.game_id` usan el mismo slug kebab-case que `Gam
 - Edición o borrado de puntuaciones.
 - Supabase Realtime.
 - UI de administración del catálogo de juegos.
-- Cambios al campo `plays` más allá de migrarlo tal cual.
+- Cambios al campo `plays` de los 8 juegos decorativos más allá de migrarlo tal cual (para juegos en `REAL_GAME_IDS`, `plays` ya refleja el conteo real de `scores`, ver Scope).
 
 Cada uno de estos, si se necesita, va en su propio spec.
