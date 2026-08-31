@@ -1,6 +1,6 @@
 # SPEC 07 — Juego real de Tetris integrado en el reproductor
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 05, SPEC 06
 > **Date:** 2026-08-31
 > **Objective:** Portar `references/started-games/03-tetris/game.js` a un motor real e integrarlo al catálogo como `tetris`.
