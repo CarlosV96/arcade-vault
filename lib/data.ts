@@ -112,6 +112,17 @@ export const GAMES: Game[] = [
     best: 24,
     plays: "4.2K",
   },
+  {
+    id: "tetris",
+    title: "TETRIS",
+    short: "Encaja las 7 piezas clásicas en caída libre antes de que se acumulen.",
+    long: "Un tablero de 10×20 celdas recibe piezas geométricas en caída constante. Rota con corrección de pared (wall kicks) automática, guíate con la pieza fantasma que marca dónde aterrizará cada ficha y consulta la vista previa de la siguiente pieza. Limpia líneas para subir de nivel — la velocidad de caída aumenta cada 10 líneas eliminadas.",
+    cat: "PUZZLE",
+    cover: "cover-tetris",
+    color: "cyan",
+    best: 152300,
+    plays: "8.3K",
+  },
 ];
 
 export const CATS: ("TODOS" | Category)[] = [
