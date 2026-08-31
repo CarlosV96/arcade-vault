@@ -123,6 +123,17 @@ export const GAMES: Game[] = [
     best: 152300,
     plays: "8.3K",
   },
+  {
+    id: "arkanoid",
+    title: "ARKANOID",
+    short: "Rompe muros de bloques con tu paleta y una pelota imparable.",
+    long: "Controla una paleta con el mouse o las flechas y rebota una pelota para pulverizar 5 niveles de bloques con patrones distintos. Cada nivel acelera la pelota. Pierdes una vida si la pelota cae — tienes 3.",
+    cat: "ARCADE",
+    cover: "cover-arkanoid",
+    color: "magenta",
+    best: 33200,
+    plays: "7.5K",
+  },
 ];
 
 export const CATS: ("TODOS" | Category)[] = [

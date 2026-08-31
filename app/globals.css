@@ -569,6 +569,27 @@ a { color: inherit; text-decoration: none; }
   image-rendering: pixelated;
 }
 
+.cover-arkanoid { background: radial-gradient(circle at 50% 20%, #2a0020, #0a0a18); }
+.cover-arkanoid::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(var(--magenta), var(--magenta)) 8% 18%/16% 10% no-repeat,
+    linear-gradient(var(--magenta), var(--magenta)) 26% 18%/16% 10% no-repeat,
+    linear-gradient(var(--yellow), var(--yellow)) 44% 18%/16% 10% no-repeat,
+    linear-gradient(var(--yellow), var(--yellow)) 62% 18%/16% 10% no-repeat,
+    linear-gradient(var(--cyan), var(--cyan)) 80% 18%/16% 10% no-repeat,
+    linear-gradient(var(--magenta), var(--magenta)) 8% 30%/16% 10% no-repeat,
+    linear-gradient(var(--yellow), var(--yellow)) 26% 30%/16% 10% no-repeat,
+    linear-gradient(var(--cyan), var(--cyan)) 44% 30%/16% 10% no-repeat,
+    linear-gradient(var(--cyan), var(--cyan)) 62% 30%/16% 10% no-repeat,
+    linear-gradient(var(--green), var(--green)) 80% 30%/16% 10% no-repeat,
+    radial-gradient(circle at 55% 62%, #fff 0 3px, transparent 4px),
+    linear-gradient(var(--magenta), var(--magenta)) 42% 78%/16% 6% no-repeat;
+  filter: drop-shadow(0 0 8px rgba(255,0,110,0.5));
+  image-rendering: pixelated;
+}
+
 /* ===== detail screen ===== */
 .av-detail {
   display: grid;
