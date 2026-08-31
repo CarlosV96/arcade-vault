@@ -134,6 +134,17 @@ export const GAMES: Game[] = [
     best: 33200,
     plays: "7.5K",
   },
+  {
+    id: "snake-real",
+    title: "SNAKE",
+    short: "Guía a la serpiente por la grilla y devora fruta sin morder tu propia cola.",
+    long: "Controla una serpiente de luz sobre una grilla neón: cada fruta que devora la hace más larga y más veloz. Los bordes del tablero son letales y un giro sobre tu propia cola termina la partida al instante. ¿Cuánto puedes crecer antes de fallar?",
+    cat: "ARCADE",
+    cover: "cover-snake-real",
+    color: "green",
+    best: 3200,
+    plays: "4.1K",
+  },
 ];
 
 export const CATS: ("TODOS" | Category)[] = [
