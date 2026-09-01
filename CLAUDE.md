@@ -28,107 +28,210 @@ There is no test runner, no test script, and no test files anywhere in the repo,
   `app/layout.tsx` types its props as `LayoutProps<"/">` instead of a hand-written
   `{ children: React.ReactNode }`. Don't "fix" that — it's a generated global type.
 - Path alias `@/*` → repo root (there is no `src/`).
-- `app/globals.css` sets `body { font-family: Arial, Helvetica, sans-serif; }`, which
-  currently overrides the Geist fonts `layout.tsx` loads via `next/font/google`. Harmless
-  boilerplate leftover — both fonts get replaced during the port described below anyway.
+- Fonts (Press Start 2P, Courier Prime, JetBrains Mono) are loaded via `next/font/google` in
+  `app/layout.tsx`, replacing the original Geist boilerplate.
+- Dependencies beyond Next/React: `@supabase/ssr` + `@supabase/supabase-js` (catalog/leaderboard
+  persistence) and `resend` (transactional email for the contact form). No ORM, no state
+  management library — `lib/session.tsx`'s `SessionProvider` (React context) is the only
+  cross-page client state.
 
-## Styles 
-Usa siempre /frontend-design para diseñar la interfaz de usuario.
+## Workflow: Spec-Driven Design
 
-## Current state vs. target
+This repo is built entirely through `/spec` → `/spec-impl`, both from
+`Klerith/fernando-skills` (`npx skills@latest add Klerith/fernando-skills`; installed under
+both `.agents/skills/` and `.claude/skills/`). Every feature in `app/`, `components/`, and
+`lib/` traces back to a numbered file in `specs/` (`specs/NN-slug.md`), each with `Status`,
+`Depends on`, `Scope (In/Out)`, `Data model`, `Implementation plan`, `Acceptance criteria`,
+`Decisions`, and `Risks` sections. **Read the relevant spec before changing behavior it
+describes** — the `Decisions` section usually records *why* something looks the way it does
+(often "the user explicitly chose X over Y"), which isn't visible from the code alone.
 
-**`app/` is unmodified `create-next-app` output** — one route (`/`), zero `"use client"`,
-no components/lib/data layer, still titled "Create Next App". Nothing has been built yet.
+There's also a project-specific skill, `.claude/skills/add-game/SKILL.md` (`/add-game`), that
+generates a new `specs/NN-slug.md` for porting a real game into the catalog — it only asks
+game-specific questions (id, category, color, cover, canvas/asset strategy) because the
+integration architecture (registry, Supabase tables, `RealGameProps` contract) is already
+fixed by SPEC 05/06. It never writes application code or touches Supabase itself; it only
+produces a Draft spec for `/spec-impl` to implement.
 
-**The actual spec is an untracked design prototype** at
-`references/resources/resources/templates/` (note the doubled `resources/`; ignore
-`references/resources/__MACOSX/` — macOS archive junk). It's a standalone React 18 UMD +
-in-browser-Babel SPA — the visual and behavioral reference to port into the Next.js app, not
-code to import directly. Read `Arcade Vault.html` first; it shows the script load order the
-other files depend on.
+Specs so far (all in `specs/`, chronological):
 
-Screens map to components and a plausible route layout as follows. `nav.jsx`'s `isActive()`
-treats `detalle`/`player` as children of `biblioteca` for nav highlighting — a hint that
-`GameDetail`/`GamePlayer` should nest under the library route:
+| Spec | Title | Status |
+|---|---|---|
+| 01 | MVP visual — 5 pantallas del prototipo portadas a App Router | Implementado |
+| 02 | Home (landing) y Acerca de — `/` se convierte en Home, Biblioteca se muda a `/biblioteca` | Implementado |
+| 03 | Envío real de contacto vía Resend (`app/api/contact`) | Implementado |
+| 04 | Integración base de Supabase (clientes navegador/servidor, health-check) | Implementado |
+| 05 | Juego real de Asteroides (`asteroides`) — arquitectura de registro | Implementado |
+| 06 | Catálogo y leaderboard reales en Supabase (tablas `games`/`scores`) | Aprobado |
+| 07 | Juego real de Tetris (`tetris`) | Implementado |
+| 08 | Juego real de Arkanoid (`arkanoid`) | Aprobado |
+| 09 | Juego real de Snake (`snake-real`) — sin `game.js` de referencia, atlas de sprites propio | Aprobado |
 
-| Prototype route | Component | Source file | Suggested Next route |
-|---|---|---|---|
-| `biblioteca` (default) | `Library` | `biblioteca.jsx` | `/` |
-| `detalle` + `id` | `GameDetail` | `detalle.jsx` | `/juegos/[id]` |
-| `player` + `id` | `GamePlayer` | `reproductor.jsx` | `/juegos/[id]/jugar` |
-| `auth` | `Auth` | `auth.jsx` | `/auth` |
-| `salon` | `HallOfFame` | `salon.jsx` | `/salon` |
+Read spec 05 and 06 in full before touching anything under `lib/games/`,
+`components/games/`, or the Supabase catalog — they fix the extension architecture that
+07/08/09 (and `/add-game`) all follow without re-deriving it.
 
-Also: `nav.jsx` → `Nav` (persistent chrome), `data.jsx` → mock fixtures, `styles.css` → the
-full design system (~950 lines), `app.jsx` → root state (route + user), whose chrome
-(`Nav` + `<main>` + footer) becomes the future root layout.
+## Current state
+
+The prototype described below has been fully ported and substantially extended. `app/` is
+**not** unmodified `create-next-app` output anymore — treat the routes/components/lib layout
+as the real source of truth; the porting table further down is historical context for *why*
+things are named and shaped the way they are, not a to-do list.
+
+### Routes
+
+| Route | Component | Notes |
+|---|---|---|
+| `/` | `Home` (`components/Home.tsx`) | Landing page (SPEC 02) — hero, features, mini game rail, stats, static "actividad en vivo", pricing, CTA. |
+| `/biblioteca` | `Library` (`components/Library.tsx`) | The original prototype's default screen; moved here in SPEC 02. Reads the catalog via `lib/games-data.ts`. |
+| `/juegos/[id]` | `GameDetail` (`components/GameDetail.tsx`) | Game description + real leaderboard (`getLeaderboard`) via Supabase, `lib/data.ts` as fallback. |
+| `/juegos/[id]/jugar` | `GamePlayer` (`components/GamePlayer.tsx`) | HUD + real canvas game when `REAL_GAMES[id]` exists (see below), otherwise the original decorative shell. |
+| `/auth` | `Auth` (`components/Auth.tsx`) | Still a frontend-only simulation — no real backend auth (see Known bugs). |
+| `/salon` | `HallOfFame` (`components/HallOfFame.tsx`) | One tab per game in `games`, real leaderboards, "TU MEJOR MARCA" resolved against real rows. |
+| `/about` | `About` (`components/About.tsx`) | Mission/contact page (SPEC 02); contact form posts to `/api/contact` (SPEC 03, real Resend send). |
+| `/api/contact` | Route Handler | `POST`, validates + sends via Resend to a fixed recipient, `reply_to` = sender's email. |
+| `/api/supabase-health` | Route Handler | `GET`, confirms Supabase connectivity without needing any real table. |
+
+`Nav` (`components/Nav.tsx`, in `app/layout.tsx`) highlights: Inicio (`/`), Biblioteca
+(`/biblioteca` + any `/juegos/*`), Salón de la Fama (`/salon`), Acerca de (`/about`).
+
+### Game catalog: decorative vs. real
+
+`GAMES` in `lib/data.ts` now has **13 entries**: the original 8 decorative ones (`bloque-buster`,
+`caida`, `serpentina`, `gloton`, `invasores`, `rocas`, `ranaria`, `duelo-pixel` — still pure
+CSS/HUD simulations, no real engine, untouched since SPEC 01) plus **4 real, playable games**
+added one per spec, each as a brand-new catalog id (never replacing the thematically similar
+decorative entry — e.g. `asteroides` next to `rocas`, `tetris` next to `caida`, `arkanoid` next
+to `bloque-buster`, `snake-real` next to `serpentina`):
+
+| Real game id | Spec | Engine | Canvas wrapper | Notes |
+|---|---|---|---|---|
+| `asteroides` | 05 | `lib/games/asteroids-engine.ts` | `components/games/AsteroidsCanvas.tsx` | Keeps its own canvas-drawn HUD/"GAME OVER" overlay (intentional duplication with React's HUD); 800×600. |
+| `tetris` | 07 | `lib/games/tetris-engine.ts` | `components/games/TetrisCanvas.tsx` | 450×600 single canvas (board + "next piece" panel fused); no internal HUD; `onLivesChange` fixed at `1` (no lives concept). |
+| `arkanoid` | 08 | `lib/games/arkanoid-engine.ts` | `components/games/ArkanoidCanvas.tsx` | No spritesheet/audio ported — canvas primitives only; no internal HUD/pause overlay; dual mouse+arrow paddle control; 800×600. |
+| `snake-real` | 09 | `lib/games/snake-engine.ts` | `components/games/SnakeCanvas.tsx` | Built from scratch (no reference `game.js`); uses a real fruit sprite atlas (`lib/games/snake-sprites.ts` + `public/games/snake-real/fruits.png`, sourced from spriters-resource.com — licensing risk accepted, see SPEC 09); 1 life, lethal (non-toroidal) walls; 800×600. |
+
+**The registry architecture (fixed since SPEC 05/06, do not redesign):**
+
+- `lib/games/types.ts` — the fixed contract every engine implements: `RealGameProps`
+  (`paused`, `onScoreChange`, `onLivesChange`, `onLevelChange`, `onGameOver`) and
+  `RealGameHandle` (`end()`). **Never changes per game.**
+- `lib/games/real-game-ids.ts` — `REAL_GAME_IDS: string[]`, the single list of which catalog
+  ids have a real engine. Adding a game means adding one id here.
+- `components/games/registry.ts` — `COMPONENTS` maps id → canvas wrapper component;
+  `REAL_GAMES` is derived from `REAL_GAME_IDS` + `COMPONENTS` automatically. Adding a game
+  means adding one entry to `COMPONENTS`.
+- Everything else (`GamePlayer.tsx`, `GameDetail.tsx`, `HallOfFame.tsx`, `Library.tsx`,
+  `lib/games-data.ts`, `lib/scores.ts`) is generic over `REAL_GAME_IDS`/`REAL_GAMES` and needs
+  **zero changes** to onboard a new real game — confirmed true across specs 07/08/09. If you
+  find yourself editing one of those files just to add a game, something has drifted from the
+  intended architecture; stop and re-read spec 05/06 first.
+- Each engine is a `create<Name>Engine(canvas, callbacks)` factory with all state inside the
+  instance closure (no module-level `let`), and `pause()`/`resume()`/`endNow()`/`destroy()`.
+  Remounting via a changed `key` (on "JUGAR DE NUEVO") is how a clean instance is guaranteed —
+  don't try to add a `reset()` method instead.
+
+### Data layer: Supabase-first with local fallback
+
+Since SPEC 06, the catalog and leaderboards are **real Supabase tables**, not the mock arrays
+the prototype used:
+
+- `games` table — full catalog (13 rows), publicly readable via RLS. `lib/games-data.ts`'s
+  `getGames()`/`getGame(id)` read from it, falling back to `GAMES` (`lib/data.ts`) if Supabase
+  is unreachable. `games` has **no `best` column** — `toGame()` always sets `best: 0` on rows
+  read from Supabase; the mock `best` values in `lib/data.ts` are fallback-only and never reach
+  the UI once Supabase is up (`GameDetail`/`Library` compute "best" from real `scores` instead).
+- `scores` table — real player scores, `game_id` FK to `games.id`, publicly readable and
+  publicly insertable via RLS (no auth to check against — accepted risk, see SPEC 06 Risks).
+  Only games in `REAL_GAME_IDS` ever get real rows here.
+- `lib/games-data.ts` also exposes `getLeaderboard(gameId, limit)` and `getBestScores()`, both
+  Supabase-backed with empty-result fallbacks (`[]`/`{}`) rather than throwing.
+- `plays` ("Partidas") is dynamic **only** for `REAL_GAME_IDS` games — computed from a live
+  `count` of `scores` rows and formatted like the mock strings (`"1.2K"`). The 8 decorative
+  games keep their hardcoded mock `plays` from `lib/data.ts` forever, since they never write
+  real score rows.
+- `lib/data.ts` no longer exports `seededScores`, `PLAYERS`, or the old `ScoreRow` generator —
+  those were removed in SPEC 06 once real leaderboards took over. `ScoreRow` now lives in
+  `lib/games-data.ts` (server-computed, `date` formatted from `created_at`).
+- `lib/scores.ts` has **two** save functions with different destinations, chosen by
+  `GamePlayer.tsx` based on whether the game is in `REAL_GAMES`:
+  - `saveScore(entry)` — the 8 decorative games, writes to `localStorage.av_scores`,
+    **write-only** (nothing reads it back — see Known bugs, this is intentionally unfixed).
+  - `saveRealScore(entry)` — the 4 real games, inserts into Supabase `scores` via
+    `lib/supabase/client.ts` (browser client, no server route — there's no session to check
+    server-side yet).
+- Supabase clients: `lib/supabase/client.ts` (browser, `createBrowserClient`) and
+  `lib/supabase/server.ts` (server, `createServerClient` + `next/headers` cookies). No
+  `middleware.ts` exists — there's no auth session to refresh (Auth is still the
+  `localStorage` simulation, unrelated to Supabase).
+- Migrations are applied via the Supabase MCP tools (`mcp__supabase__apply_migration`, etc.),
+  **not** a local Supabase CLI / `supabase/migrations` folder — there isn't one in this repo.
+- Env vars: `.env.template` lists `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `RESEND_API_KEY`, `SUPABASE_DB_PASSWORD` (unused placeholder) as empty placeholders; real
+  values live only in `.env.local` (gitignored, present locally, never commit it).
 
 ## Domain model
 
 "Arcade Vault" is a retro arcade portal: browse a game catalog, play, compete on
-leaderboards. **Naming is bilingual — the biggest thing to get right when porting:**
-filenames, CSS classes, and all UI copy are Spanish; component names and props are English
-(`biblioteca.jsx` → `Library`, `detalle.jsx` → `GameDetail`, `salon.jsx` → `HallOfFame`,
-`reproductor.jsx` → `GamePlayer`). Locale is `es-ES` throughout — numbers via
+leaderboards. **Naming is bilingual:** filenames, CSS classes, and UI copy are Spanish;
+component names and props are English. Locale is `es-ES` throughout — numbers via
 `.toLocaleString("es-ES")`, dates as `DD/MM/YYYY`.
 
 Entities:
-- **Game** — `{id, title, short, long, cat, cover, color, best, plays}`. `id` is a
-  kebab-case slug. `cat` is one of `ARCADE / PUZZLE / SHOOTER / VERSUS` (plus the `TODOS`
-  filter option). Two field traps: `cover` is a **CSS class name** (e.g. `cover-bricks`),
-  not an image path — all cover art is generated from gradients in `styles.css`, and there
-  will never be game image assets; `plays` is a pre-formatted string (`"12.4K"`), not a number.
-- **Player** — username is uppercased and capped at 10 chars, an arcade-initials rule
-  enforced independently in both `auth.jsx` and `reproductor.jsx`.
-- **Score** / **Leaderboard** / **Hall of Fame** — see bugs below; the leaderboard shown on
-  a game's detail page and the one shown in the Hall of Fame are generated independently and
-  disagree.
 
-## Porting hazards
+- **Game** (`lib/data.ts` fallback type, mirrored by the `games` table minus `best`) —
+  `{id, title, short, long, cat, cover, color, best, plays}`. `id` is a kebab-case slug. `cat`
+  is `ARCADE / PUZZLE / SHOOTER / VERSUS` (plus `TODOS` as a filter-only value). `cover` is a
+  **CSS class name** (e.g. `cover-bricks`), not an image path — cover art is CSS gradients in
+  `globals.css`, no image assets for covers. `plays` is a pre-formatted string (`"12.4K"`),
+  dynamic for real games, static mock for decorative ones (see Data layer above).
+- **Player** — username uppercased, capped at 10 chars, enforced both in `Auth.tsx` and in
+  each real game's score-save flow. No real accounts — just a free-text name.
+- **Score** — real rows in Supabase `scores` for the 4 real games (`saveRealScore`); fake
+  write-only `localStorage` entries for the 8 decorative ones (`saveScore`, unread — see
+  Known bugs).
+- **Leaderboard** / **Hall of Fame** — unified onto real `scores` data since SPEC 06 (no more
+  of the old dual-generator bug). Games with zero real scores show an explicit
+  "AÚN NO HAY PUNTUACIONES" empty state rather than fabricated rows.
 
-The prototype can't be dropped in as-is:
+## Porting hazards (historical — SPEC 01 already applied these)
 
-- Components are wired via `window.X = Component` globals in `<script>` load order, and
-  every file re-aliases hooks (`useStateApp`, `useStateA`, `useMemoD`, …) to avoid
-  collisions across files. Convert to ES module imports and **delete the aliases** —
-  they're an artifact of the globals approach, not a pattern to preserve.
-- Source is React 18 UMD from unpkg + `@babel/standalone` runtime compilation
-  (`type="text/babel"`), target is React 19 via the Next build. Every screen is interactive,
-  so every ported screen needs `"use client"`.
-- Fonts (Press Start 2P, Courier Prime, JetBrains Mono, currently a Google Fonts `<link>`)
-  need to move to `next/font`, replacing Geist.
-- `.av-bg` and `.av-noise` are fixed-position siblings placed *before* `#root` in
-  `Arcade Vault.html`. In `layout.tsx` they belong before `{children}`, and `#root`'s
-  `position: relative; z-index: 2` needs to move to whatever wraps the app content — get
-  this wrong and the UI renders behind the background.
-- The palette in `styles.css` `:root` is dark-only (`--bg #0a0a0f`, `--cyan #00f5ff`,
-  `--magenta #ff006e`, `--yellow #f5ff00`, `--green #00ff88`, plus gold/silver/bronze).
-  Decide whether it becomes Tailwind v4 `@theme` tokens or stays as plain CSS alongside
-  Tailwind — either works, but pick one rather than mixing ad hoc.
+The original prototype (an untracked reference at `references/resources/resources/templates/`,
+plus `references/started-games/*` for the real game ports and `references/source-assets/*` for
+the Snake sprite atlas) could not be dropped in as-is. What was actually done, for context when
+reading old code shapes:
 
-## Known prototype bugs — don't port these faithfully
+- Global-window component wiring (`window.X = Component`) and hook aliasing
+  (`useStateApp`, `useMemoD`, …) were converted to normal ES module imports — there are no
+  aliased hooks left anywhere in `components/`/`lib/`.
+- Every interactive screen is a Client Component (`"use client"`), since the source was React
+  18 UMD + in-browser Babel and every screen has interaction.
+- `.av-bg`/`.av-noise` sit before `{children}` in `app/layout.tsx`, and the content wrapper
+  carries `position: relative; z-index: 2` — if the background ever renders on top of content,
+  this ordering is the first thing to check.
+- The dark palette (`--bg`, `--cyan`, `--magenta`, `--yellow`, `--green`, gold/silver/bronze)
+  stayed as plain CSS custom properties in `app/globals.css`, deliberately **not** converted to
+  Tailwind v4 `@theme` tokens (SPEC 01 decision — lower risk for the MVP, revisit only if asked).
 
-Each looks intentional in isolation but they contradict each other across files:
+## Known prototype bugs — still intentionally unfixed for decorative games
 
-- `game.best` in `data.jsx` is inconsistent with what `seededScores()` generates (e.g.
-  `bloque-buster` has `best: 28450`, but its generated leaderboard rows run 50k–250k) — the
-  detail page's "Mejor global" stat reads lower than every row in the leaderboard next to it.
-- The same game gets two different leaderboards: `detalle.jsx` seeds `seededScores` with
-  `id.length * 17 + 3` (count 10); `salon.jsx` seeds with `tab.length * 23 + 7` (count 12).
-- `localStorage.av_scores` is write-only: `app.jsx`'s `handleSaveScore` appends to it, but
-  nothing reads it back — `HallOfFame` fakes the current player's row instead
-  (`youRank = 8 + (tab.length % 4)`). Actually wiring this up is unimplemented work, not
-  a straight port.
-- Guest login in `auth.jsx` calls `onLogin(null)`, which gets `JSON.stringify`'d to the
-  string `"null"` in `localStorage` — guest and logged-out end up indistinguishable.
-- `reproductor.jsx` is a simulation, not a game: no canvas, no game loop. A `setInterval`
-  adds random points every 220ms, `lives` is never decremented, and the level-up check
-  (`score % 2500 < 100`) can fire more than once per threshold.
+These affect only the **8 decorative games** (the real 4 fixed their equivalent issue when
+each was ported — e.g. `asteroides`'s leaderboard is real, not `seededScores`):
 
-## Workflow note
+- `game.best` in `lib/data.ts` for decorative games is still an arbitrary mock number,
+  unrelated to anything real (there's no real leaderboard to compare it against for those
+  games — they've never had one).
+- `localStorage.av_scores` is still write-only for decorative games: `saveScore` appends to
+  it, nothing reads it back. `HallOfFame`'s "TU MEJOR MARCA" only works for real games (looked
+  up against actual `scores` rows); for decorative games there's no real row to match against,
+  so the row simply never appears.
+- Guest login in `Auth.tsx` still calls `login(null)`, serialized as the string `"null"` in
+  `localStorage["av_user"]` — guest and logged-out remain indistinguishable. Unrelated to
+  Supabase; `Auth` has no real backend at all.
+- The 8 decorative games in `GamePlayer.tsx` are still simulations, not games: fixed
+  HUD numbers driven by a `setInterval`/CSS animation, no real canvas loop. Only games in
+  `REAL_GAMES` (see above) are actually playable.
 
-`README.md` (Spanish) specifies a Spec-Driven Design workflow using `/spec` and
-`/spec-impl` from `Klerith/fernando-skills` (installed via
-`npx skills@latest add Klerith/fernando-skills`). Those skills are **not currently
-installed** in this environment, so that workflow isn't runnable yet — install them first
-if the user expects it.
+Do not "fix" these for decorative games as a side effect of unrelated work — each was either
+an explicit SPEC 01 decision or is simply out of scope until/unless a future spec ports that
+specific game to a real engine.
