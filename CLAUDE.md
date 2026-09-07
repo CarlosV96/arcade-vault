@@ -65,6 +65,20 @@ candidate isn't silently re-proposed or re-evaluated from scratch in a future se
 always re-derives catalog counts/ids from `lib/data.ts` and
 `lib/games/real-game-ids.ts` rather than trusting any number written in this file.
 
+There's also a project-specific subagent, `.claude/agents/game-jam.md` (invoke it via the Agent
+tool with `subagent_type: "game-jam"`), that starts from an open **theme** instead of a named
+candidate — it designs an original game expressing that theme and writes **3 Draft specs** for
+it in `specs/game-jam/<game-id>/` (`01-juego-<game-id>.md` end-to-end, `02-arte-y-assets.md`,
+`03-niveles-y-dificultad.md`), all in local `01`–`03` numbering independent of the global
+`specs/NN-*.md` sequence. It works fully autonomously (no clarifying questions — every design
+choice is justified in each spec's `Decisions` section) and, like `/add-game`, never writes
+application code, CSS, or SQL, and never touches Supabase; it is also independent of
+`game-planner`'s memory (`references/game-suggestions-todo.md`) — the two don't read or write
+each other's state. Because `/spec-impl` only looks inside `specs/` (flat), a jam spec has to
+be manually promoted — copied to `specs/NN-slug.md` with the next free global number and its
+state changed to `Aprobado`/`Approved` — before `/spec-impl NN-slug` can implement it; the
+agent itself stops at the Draft specs and never does that promotion.
+
 Specs so far (all in `specs/`, chronological):
 
 | Spec | Title | Status |
