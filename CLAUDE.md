@@ -53,6 +53,18 @@ integration architecture (registry, Supabase tables, `RealGameProps` contract) i
 fixed by SPEC 05/06. It never writes application code or touches Supabase itself; it only
 produces a Draft spec for `/spec-impl` to implement.
 
+One step before that, there's a project-specific subagent, `.claude/agents/game-planner.md`
+(invoke it via the Agent tool with `subagent_type: "game-planner"`), that decides *whether* a
+candidate game is worth adding at all — it never writes code, specs, or touches Supabase.
+Given a candidate (or asked to propose one), it scores it against 7 fit criteria (engine
+contract, leaderboard fit, catalog/category collision with an existing decorative game,
+session length, asset cost, brand risk, novelty vs. the 4 existing real engines) and returns a
+verdict plus, for anything that fits, a ready-to-paste brief for `/add-game`. It keeps a
+persistent memory of every verdict in `references/game-suggestions-todo.md` so the same
+candidate isn't silently re-proposed or re-evaluated from scratch in a future session; it
+always re-derives catalog counts/ids from `lib/data.ts` and
+`lib/games/real-game-ids.ts` rather than trusting any number written in this file.
+
 Specs so far (all in `specs/`, chronological):
 
 | Spec | Title | Status |
