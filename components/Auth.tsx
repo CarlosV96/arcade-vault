@@ -14,7 +14,7 @@ export function Auth() {
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    login({ name: (user || "PLAYER1").toUpperCase().slice(0, 10) });
+    login({ name: (user || "PLAYER1").toUpperCase().slice(0, 10), email: null });
     router.push("/biblioteca");
   };
 
