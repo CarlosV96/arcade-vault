@@ -29,10 +29,43 @@ export function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"google" | "github" | null>(null);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const changeTab = (next: "in" | "up") => {
     setTab(next);
     setError(null);
+    setResetMode(false);
+    setResetSent(false);
+  };
+
+  const openReset = () => {
+    setError(null);
+    setResetSent(false);
+    setResetMode(true);
+  };
+
+  const closeReset = () => {
+    setError(null);
+    setResetMode(false);
+    setResetSent(false);
+  };
+
+  const submitReset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setResetLoading(true);
+    const supabase = createClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/actualizar-contrasena`,
+    });
+    setResetLoading(false);
+    if (resetError) {
+      setError(friendlyError(resetError.message));
+      return;
+    }
+    setResetSent(true);
   };
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -112,63 +145,123 @@ export function Auth() {
           </button>
         </div>
 
-        <form onSubmit={submit}>
-          {tab === "up" && (
-            <div className="field slide-in">
-              <label>Usuario</label>
-              <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="px_kai" />
+        {tab === "in" && resetMode ? (
+          resetSent ? (
+            <div className="mono" style={{ fontSize: 12, color: "var(--ink-dim)", lineHeight: 1.6, marginTop: 8 }}>
+              Revisa tu correo <strong style={{ color: "var(--cyan)" }}>{email}</strong> para continuar con la
+              recuperación de tu contraseña.
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ width: "100%", marginTop: 16 }}
+                onClick={closeReset}
+              >
+                ‹ VOLVER A INICIAR SESIÓN
+              </button>
             </div>
-          )}
-          <div className="field">
-            <label>Correo electrónico</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jugador@vault.gg" />
-          </div>
-          <div className="field">
-            <label>Contraseña</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+          ) : (
+            <form onSubmit={submitReset}>
+              <div className="field">
+                <label>Correo electrónico</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jugador@vault.gg" />
+              </div>
 
-          {error && (
-            <div className="mono" style={{ fontSize: 11, color: "var(--magenta)", marginTop: 10, letterSpacing: "0.02em" }}>
-              {error}
+              {error && (
+                <div className="mono" style={{ fontSize: 11, color: "var(--magenta)", marginTop: 10, letterSpacing: "0.02em" }}>
+                  {error}
+                </div>
+              )}
+
+              <button className="btn lg" type="submit" disabled={resetLoading} style={{ width: "100%", marginTop: 8 }}>
+                {resetLoading ? "ENVIANDO..." : "ENVIAR ENLACE"}
+              </button>
+              <button type="button" className="btn ghost" style={{ width: "100%", marginTop: 10 }} onClick={closeReset}>
+                ‹ VOLVER A INICIAR SESIÓN
+              </button>
+            </form>
+          )
+        ) : (
+          <>
+            <form onSubmit={submit}>
+              {tab === "up" && (
+                <div className="field slide-in">
+                  <label>Usuario</label>
+                  <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="px_kai" />
+                </div>
+              )}
+              <div className="field">
+                <label>Correo electrónico</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jugador@vault.gg" />
+              </div>
+              <div className="field">
+                <label>Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {tab === "in" && (
+                <button
+                  type="button"
+                  onClick={openReset}
+                  className="mono"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    marginTop: 8,
+                    color: "var(--ink-faint)",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              )}
+
+              {error && (
+                <div className="mono" style={{ fontSize: 11, color: "var(--magenta)", marginTop: 10, letterSpacing: "0.02em" }}>
+                  {error}
+                </div>
+              )}
+
+              <button className="btn lg" type="submit" disabled={loading} style={{ width: "100%", marginTop: 8 }}>
+                {loading ? "ENVIANDO..." : tab === "in" ? "ENTRAR AL VAULT" : "CREAR Y JUGAR"}
+              </button>
+            </form>
+
+            <button className="btn ghost" style={{ width: "100%", marginTop: 10 }} onClick={playAsGuest}>
+              JUGAR COMO INVITADO
+            </button>
+
+            <div className="auth-divider">O CONTINÚA CON</div>
+            <div className="social">
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={oauthLoading !== null}
+                onClick={() => void signInWithOAuth("google")}
+              >
+                {oauthLoading === "google" ? "CONECTANDO..." : "◆ GOOGLE"}
+              </button>
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={oauthLoading !== null}
+                onClick={() => void signInWithOAuth("github")}
+              >
+                {oauthLoading === "github" ? "CONECTANDO..." : "▣ GITHUB"}
+              </button>
             </div>
-          )}
-
-          <button className="btn lg" type="submit" disabled={loading} style={{ width: "100%", marginTop: 8 }}>
-            {loading ? "ENVIANDO..." : tab === "in" ? "ENTRAR AL VAULT" : "CREAR Y JUGAR"}
-          </button>
-        </form>
-
-        <button className="btn ghost" style={{ width: "100%", marginTop: 10 }} onClick={playAsGuest}>
-          JUGAR COMO INVITADO
-        </button>
-
-        <div className="auth-divider">O CONTINÚA CON</div>
-        <div className="social">
-          <button
-            className="btn ghost"
-            type="button"
-            disabled={oauthLoading !== null}
-            onClick={() => void signInWithOAuth("google")}
-          >
-            {oauthLoading === "google" ? "CONECTANDO..." : "◆ GOOGLE"}
-          </button>
-          <button
-            className="btn ghost"
-            type="button"
-            disabled={oauthLoading !== null}
-            onClick={() => void signInWithOAuth("github")}
-          >
-            {oauthLoading === "github" ? "CONECTANDO..." : "▣ GITHUB"}
-          </button>
-        </div>
+          </>
+        )}
 
         <div style={{ marginTop: 18, textAlign: "center", fontSize: 11, color: "var(--ink-faint)", letterSpacing: "0.1em" }}>
           AL ENTRAR ACEPTAS LOS TÉRMINOS DEL SALÓN ARCADE
