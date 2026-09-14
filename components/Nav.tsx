@@ -49,7 +49,7 @@ export function Nav() {
           <span>CRÉDITOS · 03</span>
         </div>
         {user ? (
-          <button className="btn ghost auth-btn" onClick={logout}>
+          <button className="btn ghost auth-btn" onClick={() => void logout()}>
             {user.name} ▾
           </button>
         ) : (

@@ -44,7 +44,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(session ? toSessionUser(session.user) : readGuestUser());
     });
 
